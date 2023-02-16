@@ -16,8 +16,8 @@ class CreateItMigrateLister extends WireData implements Module
 	{
 		return [
 			'title' => 'CreateItMigrateLister',
-			'version' => '0.0.4',
-			'summary' => 'Lister Pro backup and restore for ProcessWire',
+			'version' => '0.0.5',
+			'summary' => 'Lister Pro import and export for ProcessWire',
 			'autoload' => 'template=admin',
 			'singular' => true,
 			'icon' => 'magic',
@@ -30,13 +30,12 @@ class CreateItMigrateLister extends WireData implements Module
 		$modules = wire()->modules;
 		$listerPro = $modules->get('ProcessPageListerPro');
 
-		//$this->addHookBefore("ProcessPageListerPro::executeConfig", $this, "showCopyCode"); //InputfieldForm::render
 		$this->addHookBefore("InputfieldForm::render", $this, "showListerCode");
 		$modules->addHookAfter('saveModuleConfigData', $this, 'processConfigActions');
 	}
 
 	/**
-	 * Show edit info on field and template edit screen
+	 * Show edit info on lister edit and Lister Pro module config screen
 	 * @return void
 	 */
 	public function showListerCode(HookEvent $event)
@@ -142,7 +141,6 @@ class CreateItMigrateLister extends WireData implements Module
 
 		$settings = isset($data) ? $data : array();
 
-		//$settings = isset($configData['settings'][$page->name]) ? $configData['settings'][$page->name] : array();
 		$settings['pagename'] = $data['pagename'];
 		$configData['settings'][$data['pagename']] = $settings;
 		$modules->saveModuleConfigData('ProcessPageListerPro', $configData);
@@ -173,27 +171,5 @@ class CreateItMigrateLister extends WireData implements Module
 		if ($data) {
 			$this->importLister($data);
 		}
-	}
-
-	/**
-	 * PHP var_export() with short array syntax (square brackets) indented 2 spaces.
-	 *
-	 * NOTE: The only issue is when a string value has `=>\n[`, it will get converted to `=> [`
-	 * @link https://www.php.net/manual/en/function.var-export.php
-	 */
-	function varexport($expression, $return = TRUE)
-	{
-		$export = var_export($expression, TRUE);
-		$patterns = [
-			"/array \(/" => '[',
-			"/^([ ]*)\)(,?)$/m" => '$1]$2',
-			"/=>[ ]?\n[ ]+\[/" => '=> [',
-			"/([ ]*)(\'[^\']+\') => ([\[\'])/" => '$1$2 => $3',
-		];
-		$export = preg_replace(array_keys($patterns), array_values($patterns), $export);
-		if ((bool) $return)
-			return $export;
-		else
-			echo $export;
 	}
 }
