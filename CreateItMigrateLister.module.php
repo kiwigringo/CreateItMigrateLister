@@ -32,7 +32,7 @@ class CreateItMigrateLister extends WireData implements Module
 
 		//$this->addHookBefore("ProcessPageListerPro::executeConfig", $this, "showCopyCode"); //InputfieldForm::render
 		$this->addHookBefore("InputfieldForm::render", $this, "showListerCode");
-		$modules->addHookAfter('saveModuleConfigData', $listerPro, 'processConfigActions');
+		$modules->addHookAfter('saveModuleConfigData', $this, 'processConfigActions');
 	}
 
 	/**
@@ -120,17 +120,20 @@ class CreateItMigrateLister extends WireData implements Module
 		return $code;
 	}
 
-	public function importLister(array $json)
+	/**
+	 * @param string $json 
+	 * @return mixed 
+	 * @throws WireException 
+	 * @throws PDOException 
+	 */
+	public function importLister(string $json)
 	{
 		$modules = $this->wire()->modules;
-		$lister = $modules()->ProcessPageListerPro;
+		$lister = $this->wire()->modules('ProcessPageListerPro');
 		$sanitizer = $this->wire()->sanitizer;
 
 		$data = is_array($json) ? $json : wireDecodeJSON($json);
 		if (!$data) throw new WireException("Invalid import data");
-
-		bd($data);
-		return;
 
 		$newPage = $lister->addNewLister($data['pagename']);
 		if (!$newPage->id) return $newPage; // NullPage
@@ -156,15 +159,16 @@ class CreateItMigrateLister extends WireData implements Module
 	 */
 	public function processConfigActions(HookEvent $e)
 	{
-
+		if (!$e->arguments(0) == 'ProcessPageListerPro')
+			return;
 		$input = $this->wire()->input;
 
 		static $level = 0;
 		$level++;
 		if ($level > 1) return;
 
-		// check for NEW listers
-		$title = $input->post('_new_lister_title');
+		// check for Lister Data to import
+		//$title = $input->post('_new_lister_title');
 		$data = $input->post('import_data');
 		if ($data) {
 			$this->importLister($data);
