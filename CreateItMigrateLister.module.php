@@ -2,6 +2,8 @@
 
 namespace ProcessWire;
 
+use PDOException;
+
 /**
  * @author Christopher Cookson
  * @license MIT
@@ -14,9 +16,9 @@ class CreateItMigrateLister extends WireData implements Module
 	{
 		return [
 			'title' => 'CreateItMigrateLister',
-			'version' => '0.0.3',
+			'version' => '0.0.4',
 			'summary' => 'Lister Pro backup and restore for ProcessWire',
-			'autoload' => 2,
+			'autoload' => 'template=admin',
 			'singular' => true,
 			'icon' => 'magic',
 			'requires' => 'ProcessPageListerPro'
@@ -30,7 +32,6 @@ class CreateItMigrateLister extends WireData implements Module
 
 		//$this->addHookBefore("ProcessPageListerPro::executeConfig", $this, "showCopyCode"); //InputfieldForm::render
 		$this->addHookBefore("InputfieldForm::render", $this, "showListerCode");
-		$this->addHookBefore("InputfieldForm::render", $this, "importListerCode");
 		$modules->addHookAfter('saveModuleConfigData', $listerPro, 'processConfigActions');
 	}
 
@@ -45,17 +46,23 @@ class CreateItMigrateLister extends WireData implements Module
 		//bd($this->wire()->page;
 		$page = $this->wire()->page;
 
-		if ($event->process == 'ProcessPageListerPro' && $page->template == 'admin') {
-			$lister = $this->wire()->page;
-		} else
+		if ($event->process == 'ProcessPageListerPro' && $page->template == 'admin' && $page->urlSegment == 'config') {
+			$lister = $page;
+		} elseif ($event->process == 'ProcessModule' && $page->template == 'admin') {
+			$this->importListerCode($event);
 			return;
+		} else {
+			bd($event);
+			return;
+		}
 
 		$existing = $form->get('defaultSelector');
 		// early exit (eg when changing fieldtype)
 		if (!$existing)
 			return;
 
-
+		bd($event);
+		bd($page);
 		$form->add([
 			'name' => '_ListerProCopyInfo',
 			'type' => 'markup',
@@ -75,10 +82,7 @@ class CreateItMigrateLister extends WireData implements Module
 		$form = $event->object;
 		$page = $this->wire()->page;
 		bd($event);
-		if ($event->process == 'ProcessModule' && $page->template == 'admin') {
-			$lister = $this->wire()->page;
-		} else
-			return;
+		$lister = $this->wire()->page;
 
 		$existing = $form->get('_new_lister_title');
 		// early exit (eg when changing fieldtype)
@@ -138,6 +142,13 @@ class CreateItMigrateLister extends WireData implements Module
 		return $newPage;
 	}
 
+	/**
+	 * @param HookEvent $e 
+	 * @return void 
+	 * @throws WireException 
+	 * @throws WirePermissionException 
+	 * @throws PDOException 
+	 */
 	public function processConfigActions(HookEvent $e)
 	{
 
