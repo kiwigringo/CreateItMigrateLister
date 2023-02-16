@@ -52,7 +52,6 @@ class CreateItMigrateLister extends WireData implements Module
 			$this->importListerCode($event);
 			return;
 		} else {
-			bd($event);
 			return;
 		}
 
@@ -61,8 +60,6 @@ class CreateItMigrateLister extends WireData implements Module
 		if (!$existing)
 			return;
 
-		bd($event);
-		bd($page);
 		$form->add([
 			'name' => '_ListerProCopyInfo',
 			'type' => 'markup',
@@ -81,7 +78,6 @@ class CreateItMigrateLister extends WireData implements Module
 	{
 		$form = $event->object;
 		$page = $this->wire()->page;
-		bd($event);
 		$lister = $this->wire()->page;
 
 		$existing = $form->get('_new_lister_title');
@@ -119,26 +115,35 @@ class CreateItMigrateLister extends WireData implements Module
 		$configData = $modules->getModuleConfigData('ProcessPageListerPro');
 		$settings = isset($configData['settings'][$page->name]) ? $configData['settings'][$page->name] : array();
 
-		$code = $this->varexport($settings);
+		//$code = $this->varexport($settings);
+		$code = wireEncodeJSON($settings);
 		return $code;
 	}
 
-	public function importLister($newListerTitle)
+	public function importLister(array $json)
 	{
 		$modules = $this->wire()->modules;
 		$lister = $modules()->ProcessPageListerPro;
+		$sanitizer = $this->wire()->sanitizer;
 
-		$newPage = $lister->addNewLister($newListerTitle);
-		if (!$newPage->id)
-			return $newPage; // NullPage
-		$newPage->save();
+		$data = is_array($json) ? $json : wireDecodeJSON($json);
+		if (!$data) throw new WireException("Invalid import data");
+
+		bd($data);
+		return;
+
+		$newPage = $lister->addNewLister($data['pagename']);
+		if (!$newPage->id) return $newPage; // NullPage
 
 		$configData = $modules->getModuleConfigData('ProcessPageListerPro');
-		$settings = isset($configData['settings'][$page->name]) ? $configData['settings'][$page->name] : array();
-		$settings['pagename'] = $newPage->name;
-		$configData['settings'][$newPage->name] = $settings;
+
+		$settings = isset($data) ? $data : array();
+
+		//$settings = isset($configData['settings'][$page->name]) ? $configData['settings'][$page->name] : array();
+		$settings['pagename'] = $data['pagename'];
+		$configData['settings'][$data['pagename']] = $settings;
 		$modules->saveModuleConfigData('ProcessPageListerPro', $configData);
-		$this->message(sprintf($this->_('Imported Lister: %1$s'), $newPage->name));
+		$this->message(sprintf($this->_('Imported Lister: %1$s'), $data['pagename']));
 		return $newPage;
 	}
 
@@ -162,20 +167,7 @@ class CreateItMigrateLister extends WireData implements Module
 		$title = $input->post('_new_lister_title');
 		$data = $input->post('import_data');
 		if ($data) {
-			$this->importLister($data, $title);
-		}
-
-		// check for DELETED Listers	
-		$deleteIDs = $input->post('_delete_lister');
-		if (is_array($deleteIDs) && count($deleteIDs)) {
-			if ($input->post('_delete_confirm')) {
-				foreach ($deleteIDs as $pageID) {
-					$deletePage = $this->getListerPageByID($pageID);
-					if ($deletePage->id) $this->deleteLister($deletePage);
-				}
-			} else {
-				$this->error(__('Delete was not confirmed'));
-			}
+			$this->importLister($data);
 		}
 	}
 
